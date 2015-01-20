@@ -8,7 +8,7 @@ import SpectralTools
 class periodicTable( object ):
     def __init__(self):
         self.Zsymbol_table = {}
-        df = open('/home/deen/Code/Python/AstroCode/MOOGConstants.dat', 'r')
+        df = open('/Users/ajuarez/Code/AstroCode/MOOGConstants.dat', 'r')
         for line in df.readlines():
             l = line.split('-')
             self.Zsymbol_table[int(l[0])] = l[1].strip()
@@ -211,6 +211,27 @@ class Spectral_Line( object ):
                         else:
                             out.write('%10.3f\n' %
                                     (self.stark))
+            elif kwargs["mode"].upper() == "OLDMOOG":
+                if( (self.expot_lo < 20.0) & (self.species % 1 <= 0.2)):
+                    if not(self.DissE):
+                        out.write('%10.3f%10s%10.3f%10.5f' %
+                           (self.zeeman["NOFIELD"][0],
+                           self.species,self.expot_lo,
+                           self.zeeman["NOFIELD"][1]))
+                        if not(self.VdW):
+                            out.write('%40s\n'% (' '))
+                        else:
+                            out.write('%10.3f%30s\n' %
+                                    (self.VdW, ' '))
+                    else:
+                        out.write('%10.3f%10.5f%10.3f%10.3f' %
+                                (self.wl, self.species, self.expot_lo,self.loggf))
+                        if not(self.VdW):
+                            out.write('%10s%10.3f%20s\n' %
+                                    (' ',self.DissE, ' '))
+                        else:
+                            out.write('%10.3f%10.3f%20s\n' %
+                                    (self.VdW, self.DissE, ' '))
     def zeeman_splitting(self, B, **kwargs):
         self.compute_zeeman_transitions(B, **kwargs)
         wl = []
@@ -692,6 +713,12 @@ def write_par_file(wl_start, wl_stop, stage_dir, b_dir, prefix, temps=None,
     elif mode == 'synth':
         fn = 'batch.synth'
         suffix = '.scalar'
+    elif mode == 'solar':
+        fn = 'solar.par'
+        suffix = '.scalar'
+    elif mode == 'arcturus':
+        fn = 'arcturus.par'
+        suffix = '.scalar'
 
     outfile_name = os.path.join(stage_dir,'Parfiles', b_dir, fn)
 
@@ -700,6 +727,11 @@ def write_par_file(wl_start, wl_stop, stage_dir, b_dir, prefix, temps=None,
     else:
         output_prefix = '../../Output/'+b_dir+'/'
 
+    #if (mode == 'arcturus') | (mode == 'solar'):
+    #    line_prefix = '../Linelists/'+prefix+'/'
+    #    output_prefix = '../Output/'+prefix+'/'
+    #else:
+    #    line_prefix = '../../Linelists/'+b_dir+'/'
     line_prefix = '../../Linelists/'+b_dir+'/'
 
     labels = {'terminal':'x11',
@@ -713,16 +745,32 @@ def write_par_file(wl_start, wl_stop, stage_dir, b_dir, prefix, temps=None,
             'diskflag':1}
             #'plot':2, 
             #'obspectrum':5}
-    file_labels = {'summary_out':'../../Output/'+b_dir+'/summary.out',
+    file_labels = {'summary_out':output_prefix+'summary.out',
             'standard_out':output_prefix+'out1',
             'smoothed_out':output_prefix+'smoothed.out',
-            'atmos_dir':'/home/deen/Data/Atmospheres/MARCS/',
+            'atmos_dir':'/Users/ajuarez/Data/Atmospheres/MARCS/',
             'out_dir':output_prefix,
             'lines_in':line_prefix+prefix+'_weak_linelist'+suffix,
             'stronglines_in':line_prefix+prefix+'_strong_linelist'+suffix}
             #'model_in':'model.md',
             #'observed_in':'observed.dat'}
 
+    if "OBSERVED" in kwargs.keys():
+        labels["obspectrum"] = 5
+        labels["plot"] = 2
+        file_labels["observed_in"] = '../../Observed/'+prefix+'/'+kwargs["OBSERVED"]
+    if mode == 'solar':
+        file_labels["model_in"] = file_labels['atmos_dir']+'MARCS_Solar.md'
+        del file_labels["out_dir"]
+        del file_labels["atmos_dir"]
+        del labels["diskflag"]
+        mode = 'synth'
+    if mode == 'arcturus':
+        file_labels["model_in"] = file_labels['atmos_dir']+'MARCS_Arcturus.md'
+        del file_labels["out_dir"]
+        del file_labels["atmos_dir"]
+        del labels["diskflag"]
+        mode = 'synth'
 
     for l in labels:
         if l in kwargs:
